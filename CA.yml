@@ -1,0 +1,52 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: Configure dpkg
+    raw: sudo dpkg --configure -a
+    ignore_errors: yes
+    changed_when: false
+
+#  - name: Install updates (Ubuntu)
+ #   apt:
+  #    upgrade: yes
+   #   update_cache: yes
+
+  - name: Install openssl
+    package:
+      name: openssl
+      state: present
+
+- hosts: server1
+  become: true
+  tasks:
+
+  - name: Create location for CA
+    file:
+      path: /etc/ssl/CA
+      state: directory
+      mode: '0700' 
+
+  - name: Keep track of serial numbers
+    shell:
+      sudo sh -c "echo '01'> /etc/ssl/CA/serial"
+      sudo touch /etc/ssl/CA/index.txt
+
+  - name: Modify the openssl.cnf file
+    ansible.builtin.lineinfile:
+      path: /etc/ssl/openssl.cnf
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+     - { regexp: './demoCA', line: '/etc/ssl'}
+     - { regexp: 'dir/index.txt', line: 'dir/CA/index.txt'}
+     - { regexp: 'dir/cacert.pem', line: 'dir/certs/cacert.pem'}
+     - { regexp: 'dir/serial', line: 'dir/CA/serial'}
+     - { regexp: 'dir/private/cakey.pem', line: 'dir/private/cakey.pem'}
+
+#  - name: Move the key and root certificate
+ #   shell:
+  #    sudo mv cakey.pem /etc/ssl/private/
+   #   sudo mv cacert.pem /etc/ssl/certs/

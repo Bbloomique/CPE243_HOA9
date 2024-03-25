@@ -1,0 +1,42 @@
+---
+
+- hosts: all
+  become: true
+  pre_tasks:
+
+  - name: Configure dpkg
+    raw: sudo dpkg --configure -a
+    ignore_errors: yes
+    changed_when: false
+
+#  - name: Install updates (Ubuntu)
+ #   apt:
+  #    upgrade: yes
+   #   update_cache: yes
+
+- hosts: server1
+  become: true
+  tasks:
+
+  - name: Install openssl
+    package:
+      name: openssl
+      state: present
+
+  - name: Create a location for the CA
+    file:
+      path: /etc/ssl/CA
+      state: directory
+      mode: '0700'
+
+  - name: Generate private key
+    command: openssl genpkey -algorithm RSA -out /etc/ssl/CA/ca.key
+    args:
+      creates: /etc/ssl/CA/ca.key
+
+  - name: Generate the CA
+    command: openssl req -x509 -new -nodes -key /etc/ssl/CA/ca.key -sha256 -days 365 -out /etc/ssl/CA/ca.crt -subj "/C=US/ST=State/L=City/O=Organization/CN=CA"
+    args:
+      creates: /etc/ssl/CA/ca.crt
+    register: ca_cert_result
+    changed_when: ca_cert_result.rc == 0
